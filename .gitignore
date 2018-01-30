@@ -1,1 +1,4 @@
-build/
+# Recommended build directory names
+
+debug/
+release/
