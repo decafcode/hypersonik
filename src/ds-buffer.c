@@ -2,6 +2,7 @@
 #include <dsound.h>
 
 #include <assert.h>
+#include <math.h>
 #include <stdbool.h>
 #include <stdlib.h>
 #include <string.h>
@@ -589,9 +590,31 @@ static __stdcall HRESULT ds_buffer_set_pan(
 
 static __stdcall HRESULT ds_buffer_set_volume(
         IDirectSoundBuffer *com,
-        LONG volume)
+        LONG millibels)
 {
-    // stub
+    struct ds_buffer *self;
+    struct snd_command *cmd;
+    int16_t linear_vol;
+    int r;
+
+    if (millibels < -10000 || millibels > 0) {
+        trace("%s: Attenutation param out of range: %li", millibels);
+
+        return E_INVALIDARG;
+    }
+
+    self = ds_buffer_downcast(com);
+    linear_vol = 256.0 * pow(10.0, millibels / 2000.0);
+
+    r = snd_client_cmd_alloc(self->cli, &cmd);
+
+    if (r < 0) {
+        return hr_from_errno(r);
+    }
+
+    snd_command_set_volume(cmd, self->stm, 0, linear_vol);
+    snd_command_set_volume(cmd, self->stm, 1, linear_vol);
+    snd_client_cmd_submit(self->cli, cmd);
 
     return S_OK;
 }
