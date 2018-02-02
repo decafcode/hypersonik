@@ -36,6 +36,21 @@ static HRESULT wasapi_renegotiate_buffer(
         IAudioClient **ac_ref,
         const WAVEFORMATEX *wfx);
 
+static const WAVEFORMATEX wasapi_sys_wfx = {
+    .wFormatTag         = WAVE_FORMAT_PCM,
+    .nChannels          = 2,
+    .nSamplesPerSec     = 44100,
+    .wBitsPerSample     = 16,
+    .nBlockAlign        = 4,
+    .nAvgBytesPerSec    = 176400,
+    .cbSize             = 0,
+};
+
+const WAVEFORMATEX *wasapi_get_sys_format(void)
+{
+    return &wasapi_sys_wfx;
+}
+
 HRESULT wasapi_alloc(struct wasapi **out)
 {
     struct wasapi *wasapi;
@@ -440,7 +455,6 @@ static HRESULT wasapi_thread_do_setup(
     IAudioRenderClient *rc;
     UINT32 nframes;
     void *frames;
-    WAVEFORMATEX wfx;
     HRESULT hr;
 
     trace("Searching for audio output device");
@@ -506,27 +520,17 @@ static HRESULT wasapi_thread_do_setup(
         goto end;
     }
 
-    memset(&wfx, 0, sizeof(wfx));
-
-    wfx.wFormatTag = WAVE_FORMAT_PCM;
-    wfx.nChannels = 2;
-    wfx.nSamplesPerSec = 44100;
-    wfx.wBitsPerSample = 16;
-    wfx.nBlockAlign = wfx.nChannels * (wfx.wBitsPerSample / 8);
-    wfx.nAvgBytesPerSec = wfx.nSamplesPerSec * wfx.nBlockAlign;
-    wfx.cbSize = 0;
-
     hr = IAudioClient_Initialize(
             ac,
             AUDCLNT_SHAREMODE_EXCLUSIVE,
             AUDCLNT_STREAMFLAGS_EVENTCALLBACK,
             period,
             period,
-            &wfx,
+            wasapi_get_sys_format(),
             NULL);
 
     if (hr == AUDCLNT_E_BUFFER_SIZE_NOT_ALIGNED) {
-        hr = wasapi_renegotiate_buffer(dev, &ac, &wfx);
+        hr = wasapi_renegotiate_buffer(dev, &ac, wasapi_get_sys_format());
     }
 
     if (FAILED(hr)) {
@@ -557,7 +561,7 @@ static HRESULT wasapi_thread_do_setup(
 
     trace(  "Negotiated mixing latency of %i frames (%f sec)",
             (int) nframes,
-            nframes / (double) wfx.nSamplesPerSec);
+            nframes / (double) wasapi_get_sys_format()->nSamplesPerSec);
 
     hr = IAudioClient_GetService(
             ac,
