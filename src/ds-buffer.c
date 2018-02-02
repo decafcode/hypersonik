@@ -27,6 +27,7 @@ struct ds_buffer {
     struct snd_client *cli;
     HANDLE fence;
     WAVEFORMATEX format;
+    WAVEFORMATEX format_sys;
     bool buf_owned;
     bool playing;
 };
@@ -45,6 +46,7 @@ HRESULT ds_buffer_alloc(
         struct snd_client *cli,
         struct snd_buffer *buf,
         const WAVEFORMATEX *format,
+        const WAVEFORMATEX *format_sys,
         size_t nframes)
 {
     struct ds_buffer *self;
@@ -54,9 +56,17 @@ HRESULT ds_buffer_alloc(
     assert(out != NULL);
     assert(cli != NULL);
     assert(format != NULL);
+    assert(format_sys != NULL);
 
     *out = NULL;
     self = NULL;
+
+    if (format_sys->nChannels != 2 || format_sys->wBitsPerSample != 16) {
+        trace("Unsupported system audio format");
+        hr = E_NOTIMPL;
+
+        return hr;
+    }
 
     self = calloc(sizeof(*self), 1);
 
@@ -69,6 +79,7 @@ HRESULT ds_buffer_alloc(
     self->com.lpVtbl = &ds_buffer_vtbl;
     self->rc = 1;
     memcpy(&self->format, format, sizeof(*format));
+    memcpy(&self->format_sys, format_sys, sizeof(*format_sys));
 
     self->fence = CreateEvent(NULL, FALSE, FALSE, NULL);
 

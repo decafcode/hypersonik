@@ -255,6 +255,7 @@ static HRESULT ds_api_create_sound_buffer_sec(
             cli,
             NULL,
             format,
+            wasapi_get_sys_format(self->wasapi),
             desc->dwBufferBytes / 4);
 
     if (FAILED(hr)) {
@@ -315,6 +316,7 @@ static __stdcall HRESULT ds_api_duplicate_sound_buffer(
             cli,
             ds_buffer_get_snd_buffer(src),
             ds_buffer_get_format_(src),
+            wasapi_get_sys_format(self->wasapi),
             0);
 
     if (FAILED(hr)) {

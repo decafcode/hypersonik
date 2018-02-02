@@ -16,7 +16,8 @@ HRESULT ds_buffer_alloc(
         void *dtor_notify_ctx,
         struct snd_client *cli,
         struct snd_buffer *buf,
-        const WAVEFORMATEX *fmt,
+        const WAVEFORMATEX *format,
+        const WAVEFORMATEX *format_sys,
         size_t nframes);
 struct ds_buffer *ds_buffer_downcast(IDirectSoundBuffer *com);
 IDirectSoundBuffer *ds_buffer_upcast(struct ds_buffer *self);
