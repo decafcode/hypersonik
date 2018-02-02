@@ -346,7 +346,7 @@ static __stdcall HRESULT ds_buffer_get_current_position(
     self = ds_buffer_downcast(com);
 
     if (cur_play_byte_no != NULL) {
-        *cur_play_byte_no = snd_stream_peek_position(self->stm) * 2;
+        *cur_play_byte_no = snd_stream_peek_position(self->stm) * 4;
     }
 
     if (cur_write_byte_no != NULL) {
