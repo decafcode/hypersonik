@@ -46,11 +46,6 @@ static const WAVEFORMATEX wasapi_sys_wfx = {
     .cbSize             = 0,
 };
 
-const WAVEFORMATEX *wasapi_get_sys_format(void)
-{
-    return &wasapi_sys_wfx;
-}
-
 HRESULT wasapi_alloc(struct wasapi **out)
 {
     struct wasapi *wasapi;
@@ -229,6 +224,13 @@ HRESULT wasapi_snd_client_alloc(
     r = snd_client_alloc(out, wasapi->svc);
 
     return hr_from_errno(r);
+}
+
+const WAVEFORMATEX *wasapi_get_sys_format(const struct wasapi *wasapi)
+{
+    assert(wasapi != NULL);
+
+    return &wasapi_sys_wfx;
 }
 
 HRESULT wasapi_stop(struct wasapi *wasapi)
@@ -526,11 +528,11 @@ static HRESULT wasapi_thread_do_setup(
             AUDCLNT_STREAMFLAGS_EVENTCALLBACK,
             period,
             period,
-            wasapi_get_sys_format(),
+            &wasapi_sys_wfx,
             NULL);
 
     if (hr == AUDCLNT_E_BUFFER_SIZE_NOT_ALIGNED) {
-        hr = wasapi_renegotiate_buffer(dev, &ac, wasapi_get_sys_format());
+        hr = wasapi_renegotiate_buffer(dev, &ac, &wasapi_sys_wfx);
     }
 
     if (FAILED(hr)) {
@@ -561,7 +563,7 @@ static HRESULT wasapi_thread_do_setup(
 
     trace(  "Negotiated mixing latency of %i frames (%f sec)",
             (int) nframes,
-            nframes / (double) wasapi_get_sys_format()->nSamplesPerSec);
+            nframes / (double) wasapi_sys_wfx.nSamplesPerSec);
 
     hr = IAudioClient_GetService(
             ac,
