@@ -96,7 +96,7 @@ static struct ds_api *ds_api_ref(struct ds_api *self)
 
 static struct ds_api *ds_api_unref(struct ds_api *self)
 {
-    if (self != NULL || refcount_dec(&self->rc) > 0) {
+    if (self == NULL || refcount_dec(&self->rc) > 0) {
         return NULL;
     }
 
