@@ -85,3 +85,10 @@ size_t snd_buffer_nsamples(const struct snd_buffer *buf)
 
     return buf->nsamples;
 }
+
+size_t snd_buffer_nbytes(const struct snd_buffer *buf)
+{
+    assert(buf != NULL);
+
+    return buf->nsamples * 2;
+}
