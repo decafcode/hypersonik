@@ -15,6 +15,7 @@
 struct ds_api {
     IDirectSound8 com;
     refcount_t rc;
+    CRITICAL_SECTION lock; /* TODO implement locking */
     struct wasapi *wasapi;
 };
 

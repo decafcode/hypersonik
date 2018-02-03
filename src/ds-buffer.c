@@ -20,6 +20,7 @@
 struct ds_buffer {
     IDirectSoundBuffer com;
     refcount_t rc;
+    CRITICAL_SECTION lock; /* TODO implement locking */
     dtor_notify_t dtor_notify;
     void *dtor_notify_ctx;
     struct converter *conv;
