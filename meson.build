@@ -16,5 +16,6 @@ add_global_link_arguments(
 
 cc = meson.get_compiler('c')
 lib_avrt = cc.find_library('avrt')
+lib_msacm32 = cc.find_library('msacm32')
 
 subdir('src')

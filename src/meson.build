@@ -4,6 +4,8 @@ shared_library(
     vs_module_defs: 'dsound.def',
     name_prefix: '',
     sources: [
+        'converter.c',
+        'converter.h',
         'ds-api.c',
         'ds-buffer.c',
         'ds-buffer.h',
@@ -33,5 +35,6 @@ shared_library(
     ],
     dependencies: [
         lib_avrt,
+        lib_msacm32,
     ],
 )
