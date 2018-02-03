@@ -1,6 +1,7 @@
 project('hypersonik', 'c')
 
 add_global_arguments(
+    '-Wall',
     '-DCOBJMACROS',
     '-ffunction-sections',
     '-fdata-sections',
