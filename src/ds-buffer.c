@@ -47,7 +47,7 @@ HRESULT ds_buffer_alloc(
         struct snd_buffer *buf,
         const WAVEFORMATEX *format,
         const WAVEFORMATEX *format_sys,
-        size_t nframes)
+        size_t nbytes)
 {
     struct ds_buffer *self;
     HRESULT hr;
@@ -93,7 +93,7 @@ HRESULT ds_buffer_alloc(
     if (buf != NULL) {
         self->buf = buf;
     } else {
-        r = snd_buffer_alloc(&self->buf, nframes * 2);
+        r = snd_buffer_alloc(&self->buf, nbytes / 2);
 
         if (r < 0) {
             hr = hr_from_errno(r);

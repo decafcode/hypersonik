@@ -256,7 +256,7 @@ static HRESULT ds_api_create_sound_buffer_sec(
             NULL,
             format,
             wasapi_get_sys_format(self->wasapi),
-            desc->dwBufferBytes / 4);
+            desc->dwBufferBytes);
 
     if (FAILED(hr)) {
         goto end;
