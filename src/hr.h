@@ -3,7 +3,11 @@
 
 #include <winerror.h>
 
+#ifndef NDEBUG
 #define hr_trace(func, hr) hr_trace_(__FILE__, __LINE__, func, hr)
+#else
+#define hr_trace(func, hr)
+#endif
 
 HRESULT hr_from_errno(int r);
 HRESULT hr_from_win32(void);
