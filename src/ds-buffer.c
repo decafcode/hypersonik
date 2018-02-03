@@ -7,6 +7,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "converter.h"
 #include "defs.h"
 #include "ds-buffer.h"
 #include "hr.h"
@@ -21,6 +22,9 @@ struct ds_buffer {
     refcount_t rc;
     dtor_notify_t dtor_notify;
     void *dtor_notify_ctx;
+    struct converter *conv;
+    void *conv_bytes;
+    size_t conv_nbytes;
     struct snd_buffer *buf;
     struct snd_stream *stm;
     struct snd_command *cmd_stop;
@@ -36,6 +40,8 @@ extern const GUID ds_buffer_private_iid;
 
 static void ds_buffer_fence_signal(void *ptr);
 static void ds_buffer_fence_wait(struct ds_buffer *self);
+static bool ds_buffer_requires_conversion(const struct ds_buffer *self);
+static HRESULT ds_buffer_prepare_conversion(struct ds_buffer *self);
 
 static IDirectSoundBufferVtbl ds_buffer_vtbl;
 
@@ -87,6 +93,16 @@ HRESULT ds_buffer_alloc(
         hr = hr_from_win32();
         hr_trace("CreateEvent", hr);
 
+        goto end;
+    }
+
+    hr = converter_calculate_dest_nbytes(
+            format,
+            format_sys,
+            nbytes,
+            &self->conv_nbytes);
+
+    if (FAILED(hr)) {
         goto end;
     }
 
@@ -204,6 +220,9 @@ struct ds_buffer *ds_buffer_unref(struct ds_buffer *self)
         return NULL;
     }
 
+    free(self->conv_bytes);
+    converter_free(self->conv);
+
     if (self->cli != NULL) {
         if (self->cmd_stop != NULL) {
             /*  First, send our allocated-ahead-of-time stop command and then
@@ -292,6 +311,64 @@ const WAVEFORMATEX *ds_buffer_get_format_(const struct ds_buffer *self)
     assert(self != NULL);
 
     return &self->format;
+}
+
+size_t ds_buffer_get_nbytes(const struct ds_buffer *self)
+{
+    assert(self != NULL);
+
+    return self->conv_nbytes;
+}
+
+static bool ds_buffer_requires_conversion(const struct ds_buffer *self)
+{
+    assert(self != NULL);
+
+    return  self->format.nSamplesPerSec != self->format_sys.nSamplesPerSec ||
+            self->format.nChannels != self->format_sys.nChannels ||
+            self->format.wBitsPerSample != self->format_sys.wBitsPerSample;
+}
+
+static HRESULT ds_buffer_prepare_conversion(struct ds_buffer *self)
+{
+    HRESULT hr;
+
+    assert(self != NULL);
+
+    if (self->conv != NULL) {
+        return S_FALSE;
+    }
+
+    assert(self->conv_bytes == NULL);
+
+    self->conv_bytes = calloc(self->conv_nbytes, 1);
+
+    if (self->conv_bytes == NULL) {
+        hr = E_OUTOFMEMORY;
+
+        goto fail;
+    }
+
+    hr = converter_alloc(
+            &self->conv,
+            &self->format,
+            &self->format_sys,
+            self->conv_bytes,
+            self->conv_nbytes,
+            snd_buffer_samples_rw(self->buf),
+            snd_buffer_nbytes(self->buf));
+
+    if (FAILED(hr)) {
+        goto fail;
+    }
+
+    return S_OK;
+
+fail:
+    converter_free(self->conv);
+    free(self->conv_bytes);
+
+    return hr;
 }
 
 static __stdcall HRESULT ds_buffer_query_interface(
@@ -470,6 +547,7 @@ static __stdcall HRESULT ds_buffer_lock(
 {
     struct ds_buffer *self;
     size_t max_nbytes;
+    HRESULT hr;
 
     if (out_ptr == NULL || out_nbytes == NULL) {
         trace("%s: Main span out params are NULL", __func__);
@@ -503,16 +581,30 @@ static __stdcall HRESULT ds_buffer_lock(
         return E_NOTIMPL;
     }
 
-    /* Resampling is a big TODO here... */
-
     self = ds_buffer_downcast(com);
-    max_nbytes = snd_buffer_nsamples(self->buf) * 2;
+
+    if (ds_buffer_requires_conversion(self)) {
+        /*  Lazily allocate the conversion buffer. This might be a cloned
+            buffer that never actually gets locked, after all. No sense in
+            wasting time and memory. */
+
+        hr = ds_buffer_prepare_conversion(self);
+
+        if (FAILED(hr)) {
+            return hr;
+        }
+
+        max_nbytes = self->conv_nbytes;
+        *out_ptr = self->conv_bytes;
+    } else {
+        max_nbytes = snd_buffer_nsamples(self->buf) * 2;
+        *out_ptr = snd_buffer_samples_rw(self->buf);
+    }
 
     if (nbytes > max_nbytes || (flags & DSBLOCK_ENTIREBUFFER)) {
         nbytes = max_nbytes;
     }
 
-    *out_ptr = snd_buffer_samples_rw(self->buf);
     *out_nbytes = nbytes;
 
     return S_OK;
@@ -657,7 +749,14 @@ static __stdcall HRESULT ds_buffer_unlock(
         void *bytes2,
         DWORD nbytes2)
 {
-    /* This is the part where we'd resample... */
+    struct ds_buffer *self;
+
+    self = ds_buffer_downcast(com);
+
+    if (self->conv != NULL) {
+        return converter_convert(self->conv, NULL, NULL);
+    }
+
     return S_OK;
 }
 

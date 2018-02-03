@@ -27,5 +27,6 @@ struct ds_buffer *ds_buffer_unref(struct ds_buffer *self);
 void ds_buffer_unref_notify(void *ptr);
 struct snd_buffer *ds_buffer_get_snd_buffer(struct ds_buffer *self);
 const WAVEFORMATEX *ds_buffer_get_format_(const struct ds_buffer *self);
+size_t ds_buffer_get_nbytes(const struct ds_buffer *self);
 
 #endif
