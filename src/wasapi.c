@@ -344,10 +344,7 @@ static unsigned int __stdcall wasapi_thread_main(void *ctx)
     task = AvSetMmThreadCharacteristicsW(L"Pro Audio", &task_index);
 
     if (task == NULL) {
-        hr = hr_from_win32();
-        hr_trace("AvSetMmThreadCharacteristicsW", hr);
-
-        goto end;
+        hr_trace("AvSetMmThreadCharacteristicsW", hr_from_win32());
     }
 
     hr = IAudioClient_Start(ac);
