@@ -1,4 +1,4 @@
-project('hypersonik', 'c', version: '0.1.0')
+project('hypersonik', 'c', version: '0.1.1')
 
 add_global_arguments(
     '-Wall',
