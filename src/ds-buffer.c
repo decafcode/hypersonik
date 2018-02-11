@@ -431,11 +431,28 @@ static __stdcall HRESULT ds_buffer_get_current_position(
         DWORD *cur_write_byte_no)
 {
     struct ds_buffer *self;
+    size_t sys_frame_pos;
+    size_t sys_byte_pos;
+    size_t tmp;
+    HRESULT hr;
 
     self = ds_buffer_downcast(com);
 
     if (cur_play_byte_no != NULL) {
-        *cur_play_byte_no = snd_stream_peek_position(self->stm) * 4;
+        sys_frame_pos = snd_stream_peek_position(self->stm);
+        sys_byte_pos = sys_frame_pos
+                * (self->format_sys.wBitsPerSample / 8)
+                * self->format_sys.nChannels;
+
+        hr = converter_calculate_dest_nbytes(
+                &self->format_sys,
+                &self->format,
+                sys_byte_pos,
+                &tmp);
+
+        assert(SUCCEEDED(hr));
+
+        *cur_play_byte_no = tmp;
     }
 
     if (cur_write_byte_no != NULL) {
