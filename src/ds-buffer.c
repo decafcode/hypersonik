@@ -35,6 +35,7 @@ struct ds_buffer {
     WAVEFORMATEX format_sys;
     bool buf_owned;
     bool playing;
+    bool looping;
 };
 
 extern const GUID ds_buffer_private_iid;
@@ -528,7 +529,7 @@ static __stdcall HRESULT ds_buffer_get_status(
         status |= DSBSTATUS_PLAYING;
     }
 
-    if (snd_stream_get_looping(self->stm)) {
+    if (self->looping) {
         status |= DSBSTATUS_LOOPING;
     }
 
@@ -669,10 +670,11 @@ static __stdcall HRESULT ds_buffer_play(
         return hr_from_errno(r);
     }
 
-    snd_command_play(cmd, self->stm, flags & DSBPLAY_LOOPING);
-    snd_client_cmd_submit(self->cli, cmd);
-
     self->playing = true;
+    self->looping = flags & DSBPLAY_LOOPING;
+
+    snd_command_play(cmd, self->stm, self->looping);
+    snd_client_cmd_submit(self->cli, cmd);
 
     return S_OK;
 }
@@ -778,6 +780,9 @@ static __stdcall HRESULT ds_buffer_stop(IDirectSoundBuffer *com)
 
     snd_command_stop(cmd, self->stm);
     snd_client_cmd_submit(self->cli, cmd);
+
+    self->playing = false;
+    self->looping = false;
 
     return S_OK;
 }
