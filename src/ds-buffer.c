@@ -555,8 +555,8 @@ static __stdcall HRESULT ds_buffer_initialize(
 
 static __stdcall HRESULT ds_buffer_lock(
         IDirectSoundBuffer *com,
-        DWORD pos,
-        DWORD nbytes,
+        DWORD in_pos,
+        DWORD in_nbytes,
         void **out_ptr,
         DWORD *out_nbytes,
         void **out_ptr2,
@@ -564,8 +564,15 @@ static __stdcall HRESULT ds_buffer_lock(
         DWORD flags)
 {
     struct ds_buffer *self;
-    size_t max_nbytes;
+    uint8_t *buf_bytes;
+    size_t buf_nbytes;
+    size_t span_start;
+    size_t span_end;
     HRESULT hr;
+
+    self = ds_buffer_downcast(com);
+
+    /* Initial parameter validation */
 
     if (out_ptr == NULL || out_nbytes == NULL) {
         trace("%s: Main span out params are NULL", __func__);
@@ -573,19 +580,8 @@ static __stdcall HRESULT ds_buffer_lock(
         return E_POINTER;
     }
 
-    if (!(flags & DSBLOCK_ENTIREBUFFER)) {
-        trace("%s: Partial lock! (untested)", __func__);
-    }
-
-    if (pos != 0) {
-        trace("Nonzero lock offset: %i", pos);
-    }
-
-    if (nbytes % 4 != 0) {
-        trace("%s: Attempted to lock non-integral number of frames", __func__);
-
-        return E_INVALIDARG;
-    }
+    *out_ptr = NULL;
+    *out_nbytes = 0;
 
     if (out_ptr2 != NULL || out_nbytes2 != NULL) {
         trace("%s: Circular buffer lock is not implemented", __func__);
@@ -599,7 +595,7 @@ static __stdcall HRESULT ds_buffer_lock(
         return E_NOTIMPL;
     }
 
-    self = ds_buffer_downcast(com);
+    /* Acquire a suitable destination buffer */
 
     if (ds_buffer_requires_conversion(self)) {
         /*  Lazily allocate the conversion buffer. This might be a cloned
@@ -612,18 +608,39 @@ static __stdcall HRESULT ds_buffer_lock(
             return hr;
         }
 
-        max_nbytes = self->conv_nbytes;
-        *out_ptr = self->conv_bytes;
+        buf_bytes = (uint8_t *) self->conv_bytes;
+        buf_nbytes = self->conv_nbytes;
     } else {
-        max_nbytes = snd_buffer_nsamples(self->buf) * 2;
-        *out_ptr = snd_buffer_samples_rw(self->buf);
+        buf_bytes = (uint8_t *) snd_buffer_samples_rw(self->buf);
+        buf_nbytes = snd_buffer_nsamples(self->buf) * 2;
     }
 
-    if (nbytes > max_nbytes || (flags & DSBLOCK_ENTIREBUFFER)) {
-        nbytes = max_nbytes;
+    /* Decode args into a span */
+
+    if (flags & DSBLOCK_ENTIREBUFFER) {
+        span_start = 0;
+        span_end = buf_nbytes;
+    } else {
+        span_start = in_pos;
+        span_end = in_pos + in_nbytes;
     }
 
-    *out_nbytes = nbytes;
+    /* Bounds check */
+
+    if (span_start >= buf_nbytes) {
+        trace("span_start %i >= buf_nbytes %i", span_start, buf_nbytes);
+        span_start = buf_nbytes;
+    }
+
+    if (span_end > buf_nbytes) {
+        trace("span_end %i > buf_nbytes %i", span_end, buf_nbytes);
+        span_end = buf_nbytes;
+    }
+
+    /* Done */
+
+    *out_ptr = buf_bytes;
+    *out_nbytes = span_end - span_start;
 
     return S_OK;
 }
