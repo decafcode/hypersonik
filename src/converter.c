@@ -52,8 +52,8 @@ HRESULT converter_calculate_dest_nbytes(
         not about to go calculating a buffer size using floating-point
         arithmetic. */
 
-    num = src->nSamplesPerSec * src->nChannels * src->wBitsPerSample;
-    den = dest->nSamplesPerSec * dest->nChannels * dest->wBitsPerSample;
+    num = dest->nSamplesPerSec * dest->nChannels * dest->wBitsPerSample;
+    den = src->nSamplesPerSec * src->nChannels * src->wBitsPerSample;
 
     *out = (src_nbytes * num + (den - 1)) / den;
 

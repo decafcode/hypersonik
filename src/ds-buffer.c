@@ -57,6 +57,7 @@ HRESULT ds_buffer_alloc(
         size_t nbytes)
 {
     struct ds_buffer *self;
+    size_t sys_nbytes;
     HRESULT hr;
     int r;
 
@@ -97,11 +98,13 @@ HRESULT ds_buffer_alloc(
         goto end;
     }
 
+    self->conv_nbytes = nbytes;
+
     hr = converter_calculate_dest_nbytes(
             format,
             format_sys,
             nbytes,
-            &self->conv_nbytes);
+            &sys_nbytes);
 
     if (FAILED(hr)) {
         goto end;
@@ -110,7 +113,7 @@ HRESULT ds_buffer_alloc(
     if (buf != NULL) {
         self->buf = buf;
     } else {
-        r = snd_buffer_alloc(&self->buf, nbytes / 2);
+        r = snd_buffer_alloc(&self->buf, sys_nbytes / 2);
 
         if (r < 0) {
             hr = hr_from_errno(r);
