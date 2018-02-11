@@ -672,6 +672,8 @@ static __stdcall HRESULT ds_buffer_play(
     snd_command_play(cmd, self->stm, flags & DSBPLAY_LOOPING);
     snd_client_cmd_submit(self->cli, cmd);
 
+    self->playing = true;
+
     return S_OK;
 }
 
