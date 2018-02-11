@@ -643,7 +643,7 @@ static __stdcall HRESULT ds_buffer_lock(
 
     /* Done */
 
-    *out_ptr = buf_bytes;
+    *out_ptr = buf_bytes + span_start;
     *out_nbytes = span_end - span_start;
 
     return S_OK;
