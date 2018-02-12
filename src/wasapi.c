@@ -341,10 +341,14 @@ static unsigned int __stdcall wasapi_thread_main(void *ctx)
 
     trace("About to boost WASAPI thread and cease trace output");
 
+    task_index = 0;
     task = AvSetMmThreadCharacteristicsW(L"Pro Audio", &task_index);
 
     if (task == NULL) {
-        hr_trace("AvSetMmThreadCharacteristicsW", hr_from_win32());
+        hr = hr_from_win32();
+        hr_trace("AvSetMmThreadCharacteristicsW", hr);
+
+        goto end;
     }
 
     hr = IAudioClient_Start(ac);
