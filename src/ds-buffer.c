@@ -472,9 +472,27 @@ static __stdcall HRESULT ds_buffer_get_format(
         DWORD nbytes,
         DWORD *nbytes_out)
 {
-    trace("%s(%p, %u, %p) [stub]", __func__, out, nbytes, nbytes_out);
+    struct ds_buffer *self;
 
-    return E_NOTIMPL;
+    if (out != NULL) {
+        self = ds_buffer_downcast(com);
+        nbytes = nbytes < sizeof(*out) ? nbytes : sizeof(*out);
+        memcpy(out, &self->format, nbytes);
+
+        if (nbytes_out != NULL) {
+            *nbytes_out = nbytes;
+        }
+    } else {
+        if (nbytes_out != NULL) {
+            *nbytes_out = sizeof(*out);
+        } else {
+            trace("%s: ??? Both out ptrs NULL", __func__);
+
+            return E_INVALIDARG;
+        }
+    }
+
+    return S_OK;
 }
 
 static __stdcall HRESULT ds_buffer_get_frequency(
