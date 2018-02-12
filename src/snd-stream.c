@@ -52,13 +52,6 @@ void snd_stream_free(struct snd_stream *stm)
     free(stm);
 }
 
-bool snd_stream_get_looping(const struct snd_stream *stm)
-{
-    assert(stm != NULL);
-
-    return atomic_load(&stm->looping);
-}
-
 void snd_stream_set_looping(struct snd_stream *stm, bool value)
 {
     assert(stm != NULL);

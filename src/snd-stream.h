@@ -12,7 +12,6 @@ struct snd_stream;
 
 int snd_stream_alloc(struct snd_stream **out, const struct snd_buffer *buf);
 void snd_stream_free(struct snd_stream *stm);
-bool snd_stream_get_looping(const struct snd_stream *stm);
 void snd_stream_set_looping(struct snd_stream *stm, bool value);
 void snd_stream_set_volume(
         struct snd_stream *stm,
