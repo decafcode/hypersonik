@@ -269,7 +269,6 @@ struct ds_buffer *ds_buffer_unref(struct ds_buffer *self)
         self->dtor_notify(self->dtor_notify_ctx);
     }
 
-    trace("%p: Released buffer", self);
     free(self);
 
     return NULL;
