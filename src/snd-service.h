@@ -14,6 +14,7 @@ struct snd_service;
 
 typedef void (*snd_callback_t)(void *ctx);
 
+void snd_command_free(struct snd_command *cmd);
 void snd_command_play(
         struct snd_command *cmd,
         struct snd_stream *stm,

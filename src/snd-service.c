@@ -47,7 +47,6 @@ struct snd_client {
 };
 
 static int snd_command_alloc(struct snd_command **out);
-static void snd_command_free(struct snd_command *cmd);
 static struct snd_command *snd_command_downcast(struct qitem *qi);
 static struct qitem *snd_command_upcast(struct snd_command *cmd);
 static void snd_command_clear(struct snd_command *cmd);
@@ -74,7 +73,7 @@ static int snd_command_alloc(struct snd_command **out)
     return 0;
 }
 
-static void snd_command_free(struct snd_command *cmd)
+void snd_command_free(struct snd_command *cmd)
 {
     if (cmd == NULL) {
         return;
