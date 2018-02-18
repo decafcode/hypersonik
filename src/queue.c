@@ -112,8 +112,7 @@ void queue_private_move_from_shared(
     struct qitem *tail;
 
     assert(qp != NULL);
-    // Something is wrong here, need to investigate
-    //assert(qp->head == NULL); /* Sufficient for our purposes */
+    assert(qp->head == NULL); /* Sufficient for our purposes */
     assert(qs != NULL);
 
     do {
@@ -205,7 +204,8 @@ void queue_shared_move_from_private(
         struct queue_shared *qs,
         struct queue_private *qp)
 {
-    struct qitem *tail;
+    struct qitem *rev_tail;
+    struct qitem *rev_head;
     struct qitem *tmp;
 
     assert(qs != NULL);
@@ -215,15 +215,17 @@ void queue_shared_move_from_private(
         return;
     }
 
-    tail = qp->head;
-    qitem_chain_reverse(tail);
+    rev_tail = qp->head;
+    rev_head = qitem_chain_reverse(rev_tail);
 
-    assert(tail->next == NULL);
+    assert(rev_tail->next == NULL);
 
     do {
         tmp = qs->tail;
-        tail->next = tmp;
-    } while (!atomic_compare_exchange_weak(&qs->tail, &tmp, tail));
+        rev_tail->next = tmp;
+    } while (!atomic_compare_exchange_weak(&qs->tail, &tmp, rev_head));
+
+    qp->head = NULL;
 }
 
 void queue_shared_push(struct queue_shared *qs, struct qitem *qi)
