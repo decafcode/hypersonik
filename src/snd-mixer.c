@@ -110,6 +110,7 @@ void snd_mixer_mix(struct snd_mixer *m, int16_t *samples)
     struct snd_stream *stm;
     struct list_node *node;
     struct list_iter i;
+    bool samples_remain;
     int32_t sample;
     size_t j;
 
@@ -125,9 +126,9 @@ void snd_mixer_mix(struct snd_mixer *m, int16_t *samples)
         stm = snd_stream_list_downcast(node);
 
         list_iter_next(&i);
-        snd_stream_render(stm, m->work, m->nsamples);
+        samples_remain = snd_stream_render(stm, m->work, m->nsamples);
 
-        if (snd_stream_is_finished(stm)) {
+        if (!samples_remain) {
             list_remove(m->streams, node);
         }
     }

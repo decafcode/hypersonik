@@ -70,7 +70,7 @@ void snd_stream_set_volume(
     stm->volumes[channel] = value;
 }
 
-void snd_stream_render(
+bool snd_stream_render(
         struct snd_stream *stm,
         int32_t *dest,
         size_t dest_nsamples)
@@ -117,6 +117,8 @@ void snd_stream_render(
     }
 
     atomic_store(&stm->pos, pos);
+
+    return pos < buf_nsamples;
 }
 
 void snd_stream_rewind(struct snd_stream *stm)

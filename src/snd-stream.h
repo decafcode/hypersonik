@@ -17,7 +17,7 @@ void snd_stream_set_volume(
         struct snd_stream *stm,
         size_t channel,
         uint16_t value);
-size_t snd_stream_render(
+bool snd_stream_render(
         struct snd_stream *stm,
         int32_t *dest_samples,
         size_t dest_nsamples);
