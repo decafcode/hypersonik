@@ -231,13 +231,47 @@ struct ds_buffer *ds_buffer_unref(struct ds_buffer *self)
     free(self->conv_bytes);
     converter_free(self->conv);
 
-    if (self->cli != NULL) {
-        if (self->cmd_stop != NULL) {
-            /*  First, send our allocated-ahead-of-time stop command and then
+    if (self->cmd_stop != NULL) {
+        assert(self->stm != NULL);
+
+        /*  We have a sound stream. Let's try to guarantee that it can't
+            be playing; if we succeed, destroy it immediately.
+
+            1.  Are any commands pertaining to this stream in flight as a
+                result of Play or Stop calls? If so then we can't guarantee
+                anything.
+
+                Since we are about to release the final reference to this
+                object, we must be called from the last thread to hold such a
+                reference. So nobody else is going to sneak in after the atomic
+                load to push more commands and increment the count.
+
+            2.  Is the stream definitely finished with its playback cursor
+                parked at the end? */
+
+        if (    atomic_load(&self->cmds_pending) == 0 &&
+                snd_stream_is_finished(self->stm)) {
+
+            /* We don't need the stop command so just destroy it. */
+            snd_command_free(self->cmd_stop);
+
+        } else {
+
+            /*  OK, we were unable to quickly guarantee that asynchronous
+                destruction is safe, so we have to do this the slow way.
+
+                First, send our allocated-ahead-of-time stop command and then
                 wait for the fence to ensure that it has been processed. This
                 ensures that the mixer is not reading from our stream, and it
-                is safe for that stream to be deallocated. */
+                is safe for that stream to be deallocated.
 
+                This rendezvous costs ~3msec per destruction! If a lot of
+                buffers are being simultaneously deallocated then that can
+                really add up. */
+
+            trace("%p: Slow destruction!", self);
+
+            assert(self->cli != NULL);
             assert(self->fence != NULL);
 
             snd_client_cmd_submit(self->cli, self->cmd_stop);
@@ -245,11 +279,11 @@ struct ds_buffer *ds_buffer_unref(struct ds_buffer *self)
 
             /*  (posting a command to a snd_client releases ownership, so we
                 can consider self->cmd_stop to be destroyed here). */
-        }
 
-        snd_client_free(self->cli);
+        }
     }
 
+    snd_client_free(self->cli);
     snd_stream_free(self->stm);
 
     /*  Note: we may or may not own the buffer that our stream was attached to;
