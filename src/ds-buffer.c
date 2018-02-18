@@ -3,6 +3,7 @@
 
 #include <assert.h>
 #include <math.h>
+#include <stdatomic.h>
 #include <stdbool.h>
 #include <stdlib.h>
 #include <string.h>
@@ -33,6 +34,7 @@ struct ds_buffer {
     HANDLE fence;
     WAVEFORMATEX format;
     WAVEFORMATEX format_sys;
+    atomic_uint cmds_pending;
     bool buf_owned;
     bool playing;
     bool looping;
@@ -40,6 +42,7 @@ struct ds_buffer {
 
 extern const GUID ds_buffer_private_iid;
 
+static void ds_buffer_cmd_acknowledge(void *ptr);
 static void ds_buffer_fence_signal(void *ptr);
 static void ds_buffer_fence_wait(struct ds_buffer *self);
 static bool ds_buffer_requires_conversion(const struct ds_buffer *self);
@@ -277,6 +280,17 @@ struct ds_buffer *ds_buffer_unref(struct ds_buffer *self)
 void ds_buffer_unref_notify(void *ptr)
 {
     ds_buffer_unref(ptr);
+}
+
+static void ds_buffer_cmd_acknowledge(void *ptr)
+{
+    struct ds_buffer *self;
+    unsigned int old_value;
+
+    self = ptr;
+    old_value = atomic_fetch_sub(&self->cmds_pending, 1);
+
+    assert(old_value > 0);
 }
 
 static void ds_buffer_fence_signal(void *ptr)
@@ -690,7 +704,10 @@ static __stdcall HRESULT ds_buffer_play(
     self->playing = true;
     self->looping = flags & DSBPLAY_LOOPING;
 
+    atomic_fetch_add(&self->cmds_pending, 1);
+
     snd_command_play(cmd, self->stm, self->looping);
+    snd_command_set_callback(cmd, ds_buffer_cmd_acknowledge, self);
     snd_client_cmd_submit(self->cli, cmd);
 
     return S_OK;
@@ -795,7 +812,10 @@ static __stdcall HRESULT ds_buffer_stop(IDirectSoundBuffer *com)
         return hr_from_errno(r);
     }
 
+    atomic_fetch_add(&self->cmds_pending, 1);
+
     snd_command_stop(cmd, self->stm);
+    snd_command_set_callback(cmd, ds_buffer_cmd_acknowledge, self);
     snd_client_cmd_submit(self->cli, cmd);
 
     self->playing = false;
