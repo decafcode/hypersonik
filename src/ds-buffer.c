@@ -247,10 +247,11 @@ struct ds_buffer *ds_buffer_unref(struct ds_buffer *self)
                 load to push more commands and increment the count.
 
             2.  Is the stream definitely finished with its playback cursor
-                parked at the end? */
+                parked at the end? OR are we not even playing in the first
+                place? */
 
         if (    atomic_load(&self->cmds_pending) == 0 &&
-                snd_stream_is_finished(self->stm)) {
+                (!self->playing || snd_stream_is_finished(self->stm)) ) {
 
             /* We don't need the stop command so just destroy it. */
             snd_command_free(self->cmd_stop);
