@@ -23,6 +23,10 @@ HRESULT converter_calculate_dest_nbytes(
 {
     uint64_t num;
     uint64_t den;
+    uint64_t dest_bpf;
+    uint64_t dest_nframes;
+    uint64_t src_bpf;
+    uint64_t src_nframes;
 
     assert(src != NULL);
     assert(dest != NULL);
@@ -48,14 +52,27 @@ HRESULT converter_calculate_dest_nbytes(
         return E_INVALIDARG;
     }
 
+    src_bpf = src->nChannels * (src->wBitsPerSample / 8);
+
+    if (src_nbytes % src_bpf != 0) {
+        trace("Non-integral number of frames in input");
+
+        return E_INVALIDARG;
+    }
+
+    src_nframes = src_nbytes / src_bpf;
+
     /*  Do an integer quotient rounding upwards here, because I am definitely
         not about to go calculating a buffer size using floating-point
         arithmetic. */
 
-    num = dest->nSamplesPerSec * dest->nChannels * dest->wBitsPerSample;
-    den = src->nSamplesPerSec * src->nChannels * src->wBitsPerSample;
+    num = dest->nSamplesPerSec;
+    den = src->nSamplesPerSec;
+    dest_nframes = (src_nframes * num + (den - 1)) / den;
 
-    *out = (src_nbytes * num + (den - 1)) / den;
+    dest_bpf = dest->nChannels * (dest->wBitsPerSample / 8);
+
+    *out = dest_nframes * dest_bpf;
 
     return S_OK;
 }
