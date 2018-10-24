@@ -1,5 +1,4 @@
-#ifndef HYPERSONIK_CONVERTER_H
-#define HYPERSONIK_CONVERTER_H
+#pragma once
 
 #include <winerror.h>
 #include <mmreg.h>
@@ -29,5 +28,3 @@ HRESULT converter_convert(
         struct converter *conv,
         size_t *src_nprocessed,
         size_t *dest_nprocessed);
-
-#endif

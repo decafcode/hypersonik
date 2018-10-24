@@ -1,5 +1,4 @@
-#ifndef HYPERSONIK_SND_BUFFER_H
-#define HYPERSONIK_SND_BUFFER_H
+#pragma once
 
 #include <stddef.h>
 #include <stdint.h>
@@ -12,5 +11,3 @@ const int16_t *snd_buffer_samples_ro(const struct snd_buffer *buf);
 int16_t *snd_buffer_samples_rw(struct snd_buffer *buf);
 size_t snd_buffer_nsamples(const struct snd_buffer *buf);
 size_t snd_buffer_nbytes(const struct snd_buffer *buf);
-
-#endif

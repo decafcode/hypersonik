@@ -1,5 +1,4 @@
-#ifndef HYPERSONIK_LIST_H
-#define HYPERSONIK_LIST_H
+#pragma once
 
 #include <stdbool.h>
 
@@ -32,5 +31,3 @@ void list_iter_init(struct list_iter *i, struct list *list);
 bool list_iter_is_valid(const struct list_iter *i);
 void list_iter_next(struct list_iter *i);
 struct list_node *list_iter_deref(const struct list_iter *i);
-
-#endif

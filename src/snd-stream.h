@@ -1,5 +1,4 @@
-#ifndef HYPERSONIK_SND_STREAM_H
-#define HYPERSONIK_SND_STREAM_H
+#pragma once
 
 #include <stdbool.h>
 #include <stddef.h>
@@ -26,5 +25,3 @@ bool snd_stream_is_finished(const struct snd_stream *stm);
 size_t snd_stream_peek_position(const struct snd_stream *stm);
 struct list_node *snd_stream_list_upcast(struct snd_stream *node);
 struct snd_stream *snd_stream_list_downcast(struct list_node *node);
-
-#endif

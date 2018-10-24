@@ -1,5 +1,4 @@
-#ifndef HYPERSONIK_SND_MIXER_H
-#define HYPERSONIK_SND_MIXER_H
+#pragma once
 
 #include <stddef.h>
 #include <stdint.h>
@@ -14,5 +13,3 @@ void snd_mixer_free(struct snd_mixer *m);
 void snd_mixer_play(struct snd_mixer *m, struct snd_stream *stm);
 void snd_mixer_stop(struct snd_mixer *m, struct snd_stream *stm);
 void snd_mixer_mix(struct snd_mixer *m, int16_t *samples);
-
-#endif

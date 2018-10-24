@@ -1,5 +1,4 @@
-#ifndef HYPERSONIK_QUEUE_H
-#define HYPERSONIK_QUEUE_H
+#pragma once
 
 #include <stdbool.h>
 
@@ -41,5 +40,3 @@ void queue_shared_move_from_private(
         struct queue_shared *qs,
         struct queue_private *qp);
 void queue_shared_push(struct queue_shared *qs, struct qitem *qi);
-
-#endif

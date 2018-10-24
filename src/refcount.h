@@ -1,5 +1,4 @@
-#ifndef HYPERSONIK_REFCOUNT_H
-#define HYPERSONIK_REFCOUNT_H
+#pragma once
 
 #include <stdatomic.h>
 
@@ -28,5 +27,3 @@ inline unsigned int refcount_dec(refcount_t *rc)
 
     return old_rc - 1;
 }
-
-#endif

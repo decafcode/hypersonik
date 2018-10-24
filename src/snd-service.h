@@ -1,5 +1,4 @@
-#ifndef HYPERSONIK_SND_SERVICE_H
-#define HYPERSONIK_SND_SERVICE_H
+#pragma once
 
 #include <stdbool.h>
 #include <stddef.h>
@@ -39,5 +38,3 @@ int snd_client_alloc(struct snd_client **out, struct snd_service *svc);
 void snd_client_free(struct snd_client *cli);
 int snd_client_cmd_alloc(struct snd_client *cli, struct snd_command **out);
 void snd_client_cmd_submit(struct snd_client *cli, struct snd_command *cmd);
-
-#endif

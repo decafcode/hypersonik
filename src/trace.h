@@ -1,5 +1,4 @@
-#ifndef HYPERSONIK_TRACE_H
-#define HYPERSONIK_TRACE_H
+#pragma once
 
 #include <stdarg.h>
 
@@ -17,5 +16,3 @@
 
 void trace_(const char *file, int line, const char *fmt, ...);
 void tracev_(const char *file, int line, const char *fmt, va_list ap);
-
-#endif
