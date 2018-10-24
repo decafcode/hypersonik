@@ -1,10 +1,10 @@
 shared_library(
     'dsound',
-    c_pch: '../precompiled.h',
-    include_directories: inc,
-    vs_module_defs: 'dsound.def',
-    name_prefix: '',
-    sources: [
+    c_pch : '../precompiled.h',
+    include_directories : inc,
+    vs_module_defs : 'dsound.def',
+    name_prefix : '',
+    sources : [
         'converter.c',
         'converter.h',
         'ds-api.c',
@@ -33,11 +33,11 @@ shared_library(
         'wasapi.c',
         'wasapi.h',
     ],
-    dependencies: [
+    dependencies : [
         lib_avrt,
         lib_msacm32,
     ],
-    link_with: [
+    link_with : [
         guid_lib,
     ],
 )
