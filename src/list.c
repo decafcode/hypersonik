@@ -27,7 +27,7 @@ void list_node_fini(struct list_node *node)
     node->next = (void *) -1L;
 }
 
-bool list_node_is_inserted(struct list_node *node)
+bool list_node_is_inserted(const struct list_node *node)
 {
     assert(node != NULL);
 

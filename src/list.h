@@ -20,7 +20,7 @@ typedef void (*list_dtor_t)(struct list_node *node);
 
 void list_node_init(struct list_node *node);
 void list_node_fini(struct list_node *node);
-bool list_node_is_inserted(struct list_node *node);
+bool list_node_is_inserted(const struct list_node *node);
 
 int list_alloc(struct list **out);
 void list_free(struct list *list, list_dtor_t dtor);
