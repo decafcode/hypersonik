@@ -26,6 +26,8 @@ shared_library(
         'snd-service.h',
         'snd-stream.c',
         'snd-stream.h',
+        'reaper.c',
+        'reaper.h',
         'refcount.c',
         'refcount.h',
         'trace.c',
