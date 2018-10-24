@@ -1,5 +1,6 @@
 shared_library(
     'dsound',
+    c_pch: '../precompiled.h',
     include_directories: inc,
     vs_module_defs: 'dsound.def',
     name_prefix: '',
