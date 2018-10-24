@@ -2,3 +2,7 @@
 
 debug/
 release/
+
+# IDE/text editor files
+
+.*.swp
