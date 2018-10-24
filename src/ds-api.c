@@ -8,6 +8,7 @@
 #include "defs.h"
 #include "ds-buffer.h"
 #include "ds-buffer-pri.h"
+#include "reaper.h"
 #include "refcount.h"
 #include "trace.h"
 #include "wasapi.h"
@@ -17,6 +18,7 @@ struct ds_api {
     refcount_t rc;
     CRITICAL_SECTION lock; /* TODO implement locking */
     struct wasapi *wasapi;
+    struct reaper *reaper;
 };
 
 static HRESULT ds_api_alloc(struct ds_api **out);
@@ -37,12 +39,15 @@ static struct IDirectSound8Vtbl ds_api_vtbl;
 static HRESULT ds_api_alloc(struct ds_api **out)
 {
     struct ds_api *self;
+    struct snd_client *cli;
     HRESULT hr;
 
     trace_enter();
     assert(out != NULL);
 
     *out = NULL;
+    cli = NULL;
+
     self = calloc(sizeof(*self), 1);
 
     if (self == NULL) {
@@ -60,10 +65,24 @@ static HRESULT ds_api_alloc(struct ds_api **out)
         goto end;
     }
 
+    hr = wasapi_snd_client_alloc(self->wasapi, &cli);
+
+    if (FAILED(hr)) {
+        goto end;
+    }
+
+    hr = reaper_alloc(&self->reaper, cli);
+
+    if (FAILED(hr)) {
+        goto end;
+    }
+
+    cli = NULL; /* Release ownership of client to the reaper */
     *out = ds_api_ref(self);
 
 end:
     ds_api_unref(self);
+    snd_client_free(cli);
     trace_exit();
 
     return hr;
@@ -103,6 +122,7 @@ static struct ds_api *ds_api_unref(struct ds_api *self)
 
     trace("Hypersonik is shutting down");
 
+    reaper_free(self->reaper);
     wasapi_free(self->wasapi);
     free(self);
 
@@ -118,7 +138,15 @@ static void ds_api_unref_notify(void *ptr)
 
 static HRESULT ds_api_start(struct ds_api *self)
 {
+    HRESULT hr;
+
     assert(self != NULL);
+
+    hr = reaper_start(self->reaper);
+
+    if (FAILED(hr)) {
+        return hr;
+    }
 
     return wasapi_start(self->wasapi);
 }
@@ -234,6 +262,7 @@ static HRESULT ds_api_create_sound_buffer_sec(
             &child,
             ds_api_unref_notify,
             ds_api_ref(self),
+            self->reaper,
             cli,
             NULL,
             desc->lpwfxFormat,
@@ -295,6 +324,7 @@ static __stdcall HRESULT ds_api_duplicate_sound_buffer(
             &dest,
             ds_buffer_unref_notify,
             ds_buffer_ref(src),
+            self->reaper,
             cli,
             ds_buffer_get_snd_buffer(src),
             ds_buffer_get_format_(src),

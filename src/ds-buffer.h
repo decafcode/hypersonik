@@ -3,6 +3,7 @@
 #include <windows.h>
 #include <dsound.h>
 
+#include "reaper.h"
 #include "refcount.h"
 #include "snd-buffer.h"
 #include "snd-service.h"
@@ -13,6 +14,7 @@ HRESULT ds_buffer_alloc(
         struct ds_buffer **out,
         dtor_notify_t dtor_notify,
         void *dtor_notify_ctx,
+        struct reaper *reaper,
         struct snd_client *cli,
         struct snd_buffer *buf,
         const WAVEFORMATEX *format,

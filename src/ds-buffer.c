@@ -12,6 +12,7 @@
 #include "defs.h"
 #include "ds-buffer.h"
 #include "hr.h"
+#include "reaper.h"
 #include "refcount.h"
 #include "snd-buffer.h"
 #include "snd-service.h"
@@ -29,11 +30,11 @@ struct ds_buffer {
     struct converter *conv;
     void *conv_bytes;
     size_t conv_nbytes;
+    struct reaper *reaper;
+    struct reaper_task *rtask;
     struct snd_buffer *buf;
     struct snd_stream *stm;
-    struct snd_command *cmd_stop;
     struct snd_client *cli;
-    HANDLE fence;
     WAVEFORMATEX format;
     WAVEFORMATEX format_sys;
     bool buf_owned;
@@ -41,8 +42,6 @@ struct ds_buffer {
     bool looping;
 };
 
-static void ds_buffer_fence_signal(void *ptr);
-static void ds_buffer_fence_wait(struct ds_buffer *self);
 static bool ds_buffer_requires_conversion(const struct ds_buffer *self);
 static HRESULT ds_buffer_prepare_conversion(struct ds_buffer *self);
 
@@ -52,6 +51,7 @@ HRESULT ds_buffer_alloc(
         struct ds_buffer **out,
         dtor_notify_t dtor_notify,
         void *dtor_notify_ctx,
+        struct reaper *reaper,
         struct snd_client *cli,
         struct snd_buffer *buf,
         const WAVEFORMATEX *format,
@@ -65,6 +65,7 @@ HRESULT ds_buffer_alloc(
 
     assert(out != NULL);
     assert(cli != NULL);
+    assert(reaper != NULL);
     assert(format != NULL);
     assert(format_sys != NULL);
 
@@ -90,15 +91,6 @@ HRESULT ds_buffer_alloc(
     self->rc = 1;
     memcpy(&self->format, format, sizeof(*format));
     memcpy(&self->format_sys, format_sys, sizeof(*format_sys));
-
-    self->fence = CreateEvent(NULL, FALSE, FALSE, NULL);
-
-    if (self->fence == NULL) {
-        hr = hr_from_win32();
-        hr_trace("CreateEvent", hr);
-
-        goto end;
-    }
 
     self->conv_nbytes = nbytes;
 
@@ -136,19 +128,18 @@ HRESULT ds_buffer_alloc(
         goto end;
     }
 
-    /* Pre-allocate a stop command to ensure that the destructor cannot fail */
+    /* Pre-allocate a reaper task to clean up this object */
 
-    r = snd_client_cmd_alloc(cli, &self->cmd_stop);
+    self->reaper = reaper;
+    hr = reaper_alloc_task(
+            reaper,
+            &self->rtask,
+            self->stm,
+            self->buf_owned ? self->buf : NULL);
 
-    if (r < 0) {
-        hr = hr_from_errno(r);
-        trace("snd_client_cmd_alloc failed: %i", r);
-
+    if (FAILED(hr)) {
         goto end;
     }
-
-    snd_command_stop(self->cmd_stop, self->stm);
-    snd_command_set_callback(self->cmd_stop, ds_buffer_fence_signal, self);
 
     /*  Commit to constructing this object: Take ownership of passed-in
         resources and store the destructor notification callback. */
@@ -220,55 +211,16 @@ struct ds_buffer *ds_buffer_ref_checked(IDirectSoundBuffer *com)
 
 struct ds_buffer *ds_buffer_unref(struct ds_buffer *self)
 {
-    BOOL ok;
-
     if (self == NULL || refcount_dec(&self->rc) > 0) {
         return NULL;
     }
 
     free(self->conv_bytes);
     converter_free(self->conv);
-
-    if (self->cmd_stop != NULL) {
-        assert(self->stm != NULL);
-
-        /*  First, send our allocated-ahead-of-time stop command and then
-            wait for the fence to ensure that it has been processed. This
-            ensures that the mixer is not reading from our stream, and it
-            is safe for that stream to be deallocated.
-
-            This rendezvous costs ~3msec per destruction! If a lot of
-            buffers are being simultaneously deallocated then that can
-            really add up. */
-
-        assert(self->cli != NULL);
-        assert(self->fence != NULL);
-
-        snd_client_cmd_submit(self->cli, self->cmd_stop);
-        ds_buffer_fence_wait(self);
-
-        /*  (posting a command to a snd_client releases ownership, so we
-            can consider self->cmd_stop to be destroyed here). */
-    }
-
     snd_client_free(self->cli);
-    snd_stream_free(self->stm);
 
-    /*  Note: we may or may not own the buffer that our stream was attached to;
-        if this buffer was created via IDirectSound::DuplicateSoundBuffer then
-        this will not execute. */
-
-    if (self->buf_owned) {
-        snd_buffer_free(self->buf);
-    }
-
-    if (self->fence != NULL) {
-        ok = CloseHandle(self->fence);
-
-        if (!ok) {
-            hr_trace("CloseHandle(self->fence)", hr_from_win32());
-        }
-    }
+    /* Asynchronously destroy our stream and (if we own it) buffer */
+    reaper_submit_task(self->reaper, self->rtask);
 
     if (self->dtor_notify != NULL) {
         self->dtor_notify(self->dtor_notify_ctx);
@@ -282,30 +234,6 @@ struct ds_buffer *ds_buffer_unref(struct ds_buffer *self)
 void ds_buffer_unref_notify(void *ptr)
 {
     ds_buffer_unref(ptr);
-}
-
-static void ds_buffer_fence_signal(void *ptr)
-{
-    struct ds_buffer *self;
-    BOOL ok;
-
-    self = ptr;
-    ok = SetEvent(self->fence);
-
-    if (!ok) {
-        hr_trace("SetEvent(self->fence)", hr_from_win32());
-    }
-}
-
-static void ds_buffer_fence_wait(struct ds_buffer *self)
-{
-    DWORD result;
-
-    result = WaitForSingleObject(self->fence, INFINITE);
-
-    if (result != WAIT_OBJECT_0) {
-        hr_trace("WaitForSingleObject(self->fence)", hr_from_win32());
-    }
 }
 
 struct snd_buffer *ds_buffer_get_snd_buffer(struct ds_buffer *self)
