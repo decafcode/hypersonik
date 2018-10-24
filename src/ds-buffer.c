@@ -36,13 +36,11 @@ struct ds_buffer {
     HANDLE fence;
     WAVEFORMATEX format;
     WAVEFORMATEX format_sys;
-    atomic_uint cmds_pending;
     bool buf_owned;
     bool playing;
     bool looping;
 };
 
-static void ds_buffer_cmd_acknowledge(void *ptr);
 static void ds_buffer_fence_signal(void *ptr);
 static void ds_buffer_fence_wait(struct ds_buffer *self);
 static bool ds_buffer_requires_conversion(const struct ds_buffer *self);
@@ -234,54 +232,23 @@ struct ds_buffer *ds_buffer_unref(struct ds_buffer *self)
     if (self->cmd_stop != NULL) {
         assert(self->stm != NULL);
 
-        /*  We have a sound stream. Let's try to guarantee that it can't
-            be playing; if we succeed, destroy it immediately.
+        /*  First, send our allocated-ahead-of-time stop command and then
+            wait for the fence to ensure that it has been processed. This
+            ensures that the mixer is not reading from our stream, and it
+            is safe for that stream to be deallocated.
 
-            1.  Are any commands pertaining to this stream in flight as a
-                result of Play or Stop calls? If so then we can't guarantee
-                anything.
+            This rendezvous costs ~3msec per destruction! If a lot of
+            buffers are being simultaneously deallocated then that can
+            really add up. */
 
-                Since we are about to release the final reference to this
-                object, we must be called from the last thread to hold such a
-                reference. So nobody else is going to sneak in after the atomic
-                load to push more commands and increment the count.
+        assert(self->cli != NULL);
+        assert(self->fence != NULL);
 
-            2.  Is the stream definitely finished with its playback cursor
-                parked at the end? OR are we not even playing in the first
-                place? */
+        snd_client_cmd_submit(self->cli, self->cmd_stop);
+        ds_buffer_fence_wait(self);
 
-        if (    atomic_load(&self->cmds_pending) == 0 &&
-                (!self->playing || snd_stream_is_finished(self->stm)) ) {
-
-            /* We don't need the stop command so just destroy it. */
-            snd_command_free(self->cmd_stop);
-
-        } else {
-
-            /*  OK, we were unable to quickly guarantee that asynchronous
-                destruction is safe, so we have to do this the slow way.
-
-                First, send our allocated-ahead-of-time stop command and then
-                wait for the fence to ensure that it has been processed. This
-                ensures that the mixer is not reading from our stream, and it
-                is safe for that stream to be deallocated.
-
-                This rendezvous costs ~3msec per destruction! If a lot of
-                buffers are being simultaneously deallocated then that can
-                really add up. */
-
-            trace("%p: Slow destruction!", self);
-
-            assert(self->cli != NULL);
-            assert(self->fence != NULL);
-
-            snd_client_cmd_submit(self->cli, self->cmd_stop);
-            ds_buffer_fence_wait(self);
-
-            /*  (posting a command to a snd_client releases ownership, so we
-                can consider self->cmd_stop to be destroyed here). */
-
-        }
+        /*  (posting a command to a snd_client releases ownership, so we
+            can consider self->cmd_stop to be destroyed here). */
     }
 
     snd_client_free(self->cli);
@@ -315,17 +282,6 @@ struct ds_buffer *ds_buffer_unref(struct ds_buffer *self)
 void ds_buffer_unref_notify(void *ptr)
 {
     ds_buffer_unref(ptr);
-}
-
-static void ds_buffer_cmd_acknowledge(void *ptr)
-{
-    struct ds_buffer *self;
-    unsigned int old_value;
-
-    self = ptr;
-    old_value = atomic_fetch_sub(&self->cmds_pending, 1);
-
-    assert(old_value > 0);
 }
 
 static void ds_buffer_fence_signal(void *ptr)
@@ -739,10 +695,7 @@ static __stdcall HRESULT ds_buffer_play(
     self->playing = true;
     self->looping = flags & DSBPLAY_LOOPING;
 
-    atomic_fetch_add(&self->cmds_pending, 1);
-
     snd_command_play(cmd, self->stm, self->looping);
-    snd_command_set_callback(cmd, ds_buffer_cmd_acknowledge, self);
     snd_client_cmd_submit(self->cli, cmd);
 
     return S_OK;
@@ -847,10 +800,7 @@ static __stdcall HRESULT ds_buffer_stop(IDirectSoundBuffer *com)
         return hr_from_errno(r);
     }
 
-    atomic_fetch_add(&self->cmds_pending, 1);
-
     snd_command_stop(cmd, self->stm);
-    snd_command_set_callback(cmd, ds_buffer_cmd_acknowledge, self);
     snd_client_cmd_submit(self->cli, cmd);
 
     self->playing = false;
