@@ -24,8 +24,11 @@ bool list_node_is_inserted(const struct list_node *node);
 
 int list_alloc(struct list **out);
 void list_free(struct list *list, list_dtor_t dtor);
+void list_clear(struct list *list, list_dtor_t dtor);
+bool list_is_empty(const struct list *list);
 void list_append(struct list *list, struct list_node *node);
 void list_remove(struct list *list, struct list_node *node);
+void list_move(struct list *dest, struct list *src);
 
 void list_iter_init(struct list_iter *i, struct list *list);
 bool list_iter_is_valid(const struct list_iter *i);

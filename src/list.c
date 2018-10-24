@@ -49,12 +49,20 @@ int list_alloc(struct list **out)
 
 void list_free(struct list *list, list_dtor_t dtor)
 {
-    struct list_iter i;
-    struct list_node *node;
-
     if (list == NULL) {
         return;
     }
+
+    list_clear(list, dtor);
+    free(list);
+}
+
+void list_clear(struct list *list, list_dtor_t dtor)
+{
+    struct list_iter i;
+    struct list_node *node;
+
+    assert(list != NULL);
 
     list_iter_init(&i, list);
 
@@ -67,8 +75,14 @@ void list_free(struct list *list, list_dtor_t dtor)
             dtor(node);
         }
     }
+}
 
-    free(list);
+bool list_is_empty(const struct list *list)
+{
+    assert(list != NULL);
+    assert((list->head == NULL) == (list->tail == NULL));
+
+    return list->head == NULL;
 }
 
 void list_append(struct list *list, struct list_node *node)
@@ -127,6 +141,18 @@ void list_remove(struct list *list, struct list_node *node)
 
     node->prev = node;
     node->next = node;
+}
+
+void list_move(struct list *dest, struct list *src)
+{
+    assert(dest != NULL);
+    assert(src != NULL);
+    assert(list_is_empty(dest));
+
+    dest->head = src->head;
+    dest->tail = src->tail;
+    src->head = NULL;
+    src->tail = NULL;
 }
 
 void list_iter_init(struct list_iter *i, struct list *list)
