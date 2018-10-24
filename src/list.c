@@ -61,12 +61,11 @@ void list_free(struct list *list, list_dtor_t dtor)
     while (list_iter_is_valid(&i)) {
         node = list_iter_deref(&i);
         list_iter_next(&i);
+        list_remove(list, node);
 
         if (dtor != NULL) {
             dtor(node);
         }
-
-        list_remove(list, node);
     }
 
     free(list);
