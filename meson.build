@@ -23,4 +23,10 @@ cc = meson.get_compiler('c')
 lib_avrt = cc.find_library('avrt')
 lib_msacm32 = cc.find_library('msacm32')
 
+inc = include_directories(
+    'guid',
+    'src',
+)
+
+subdir('guid')
 subdir('src')

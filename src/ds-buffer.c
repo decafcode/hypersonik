@@ -18,6 +18,8 @@
 #include "snd-stream.h"
 #include "trace.h"
 
+#include "guid.h"
+
 struct ds_buffer {
     IDirectSoundBuffer com;
     refcount_t rc;
@@ -39,8 +41,6 @@ struct ds_buffer {
     bool playing;
     bool looping;
 };
-
-extern const GUID ds_buffer_private_iid;
 
 static void ds_buffer_cmd_acknowledge(void *ptr);
 static void ds_buffer_fence_signal(void *ptr);

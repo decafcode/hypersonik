@@ -1,6 +1,6 @@
 shared_library(
     'dsound',
-    include_directories: include_directories('.'),
+    include_directories: inc,
     vs_module_defs: 'dsound.def',
     name_prefix: '',
     sources: [
@@ -11,7 +11,6 @@ shared_library(
         'ds-buffer.h',
         'ds-buffer-pri.c',
         'ds-buffer-pri.h',
-        'guid.c',
         'hr.c',
         'hr.h',
         'list.c',
@@ -36,5 +35,8 @@ shared_library(
     dependencies: [
         lib_avrt,
         lib_msacm32,
+    ],
+    link_with: [
+        guid_lib,
     ],
 )
