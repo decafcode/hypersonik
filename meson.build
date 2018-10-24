@@ -3,6 +3,7 @@ project('hypersonik', 'c', version: '0.3.1')
 add_global_arguments(
     '-Wall',
     '-DCOBJMACROS',
+    '-D_WIN32_WINNT=0x0600',
     '-ffunction-sections',
     '-fdata-sections',
     language: 'c',
