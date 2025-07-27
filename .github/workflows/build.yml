@@ -1,0 +1,20 @@
+name: Build
+on: [push]
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: awalsh128/cache-apt-pkgs-action@v1
+        with:
+          packages: gcc-mingw-w64 meson
+          version: 1.0
+
+      - run: |
+          meson setup release --cross w64-mingw32.txt --buildtype release
+          meson compile -C release
+
+      - uses: actions/upload-artifact@v4
+        with:
+          path: release/src/dsound.dll

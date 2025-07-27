@@ -1,7 +1,12 @@
-project('hypersonik', 'c', version: '0.4.0')
+project(
+    'hypersonik',
+    'c',
+    version: '0.4.0',
+    default_options: ['warning_level=3']
+)
 
 add_global_arguments(
-    '-Wall',
+    '-Wno-unused-parameter',
     '-DCOBJMACROS',
     '-D_WIN32_WINNT=0x0600',
     '-ffunction-sections',
