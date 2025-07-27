@@ -2,17 +2,19 @@ name: Build
 on: [push]
 jobs:
   build:
-    runs-on: windows-latest
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      # - uses: ilammy/msvc-dev-cmd@v1
-      - uses: actions/setup-python@v5
+
+      - uses: awalsh128/cache-apt-pkgs-action@v1
         with:
-          python-version: '3.x'
-      - run: pip install meson ninja
+          packages: gcc-mingw-w64 meson
+          version: 1.0
+
       - run: |
-          meson setup release --buildtype release
+          meson setup release --cross w64-mingw32.txt --buildtype release
           meson compile -C release
+
       - uses: actions/upload-artifact@v4
         with:
-          path: release/src
+          path: release/src/dsound.dll
